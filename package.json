@@ -1,0 +1,11 @@
+{
+  "title": "Stylish export to JSON",
+  "name": "stylish-export",
+  "version": "0.0.1",
+  "description": "Export installed styles in Firefox Stylish into a Stylus compatible JSON format",
+  "main": "index.js",
+  "author": "",
+  "engines": {
+    "firefox": ">=38.0a1"
+  }
+}
