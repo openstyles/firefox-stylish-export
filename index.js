@@ -24,7 +24,7 @@ function prepare (style) {
   let sections = [];
   return new Promise((resolve) => {
     const onSection = (e, section) => sections.push(section);
-    const onError = (e) => {};
+    const onError = () => {};
     const onDone = () => {
       delete style.code;
       sections = sections.filter(s => s.code).map(s => {
@@ -37,13 +37,20 @@ function prepare (style) {
         }, s);
       });
       resolve(Object.assign(style, {sections}));
+    };
+    try {
+      require('./parse').fromMozillaFormat(style.code, onSection, onError, onDone);
     }
-    require('./parse').fromMozillaFormat(style.code, onSection, onError, onDone);
+    catch (e) {
+      console.error(style.name, e.message);
+      resolve();
+    }
   });
 }
 
 Promise.all(styles.map(prepare)).then(styles => {
-  const path = OS.Path.join(OS.Constants.Path.desktopDir, 'stylish.json')
+  styles = styles.filter(s => s);
+  const path = OS.Path.join(OS.Constants.Path.desktopDir, 'stylish.json');
   Downloads.fetch(
     URL.createObjectURL(new Blob([JSON.stringify(styles)], {
       type: 'text/plain;charset=utf-8;'
