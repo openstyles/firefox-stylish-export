@@ -1085,7 +1085,6 @@ Parser.prototype = function() {
                     this._readWhitespace();
 
                     tokenStream.mustMatch(Tokens.LBRACE);
-                    this._readWhitespace();
 
                     if (emit !== false) {
                         this.fire({
@@ -1651,7 +1650,6 @@ Parser.prototype = function() {
                 }
 
                 tokenStream.mustMatch(Tokens.LBRACE);
-                this._readWhitespace();
 
                 this.fire({
                     type:      "startdocument",
@@ -1660,6 +1658,8 @@ Parser.prototype = function() {
                     line:      token.startLine,
                     col:       token.startCol
                 });
+
+                this._readWhitespace();
 
                 var ok = true;
                 while (ok) {
