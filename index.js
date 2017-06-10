@@ -8,7 +8,16 @@ var notifications = require('sdk/notifications');
 Cu.importGlobalProperties(['Blob']);
 Cu.importGlobalProperties(['URL']);
 
-var service = Cc['@userstyles.org/style;1'].getService(Ci.stylishStyle);
+var service;
+try {
+  service = Cc['@userstyles.org/style;1'].getService(Ci.stylishStyle);
+}
+catch (e) {
+  notifications.notify({
+    title: 'Stylish export to JSON',
+    text: 'Stylish add-on is not installed or is not enabled. To extract styles make sure Stylish add-on is enabled, then reload this extension.'
+  });
+}
 var styles = service.list(service.REGISTER_STYLE_ON_CHANGE, {}).map(s => ({
   enabled: s.enabled,
   id: s.id,
