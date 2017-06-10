@@ -18,16 +18,29 @@ catch (e) {
     text: 'Stylish add-on is not installed or is not enabled. To extract styles make sure Stylish add-on is enabled, then reload this extension.'
   });
 }
-var styles = service.list(service.REGISTER_STYLE_ON_CHANGE, {}).map(s => ({
-  enabled: s.enabled,
-  id: s.id,
-  md5Url: s.md5Url,
-  originalMd5: s.originalMd5,
-  name: s.name,
-  updateUrl: s.updateUrl,
-  url: s.url,
-  code: s.code,
-}));
+var styles = service.list(service.REGISTER_STYLE_ON_CHANGE, {}).map(s => {
+  // changing update URL to chrome version
+  if (s.updateUrl) {
+    const id = /\d+/.exec(s.updateUrl);
+    if (id && id.length) {
+      let args = '';
+      if (s.updateUrl.indexOf('?') !== -1) {
+        args = s.updateUrl.split('?').pop();
+      }
+      s.updateUrl = `https://userstyles.org/styles/chrome/${id[0]}.json` + (args ? '?' + args : '');
+    }
+  }
+  return {
+    enabled: s.enabled,
+    id: s.id,
+    md5Url: s.md5Url,
+    originalMd5: s.originalMd5,
+    name: s.name,
+    updateUrl: s.updateUrl,
+    url: s.url,
+    code: s.code
+  };
+});
 
 function prepare (style) {
   let sections = [];
@@ -38,12 +51,13 @@ function prepare (style) {
       delete style.code;
       sections = sections.filter(s => s.code).map(s => {
         delete s.start;
-        return Object.assign({
+        s = Object.assign({
           domains: [],
           regexps: [],
           urlPrefixes: [],
           urls: []
         }, s);
+        return s;
       });
       resolve(Object.assign(style, {sections}));
     };
@@ -61,7 +75,7 @@ Promise.all(styles.map(prepare)).then(styles => {
   styles = styles.filter(s => s);
   const path = OS.Path.join(OS.Constants.Path.desktopDir, 'stylish.json');
   Downloads.fetch(
-    URL.createObjectURL(new Blob([JSON.stringify(styles)], {
+    URL.createObjectURL(new Blob([JSON.stringify(styles, null, '\t')], {
       type: 'text/plain;charset=utf-8;'
     })),
     path
