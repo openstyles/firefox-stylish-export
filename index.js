@@ -32,12 +32,13 @@ var styles = service.list(service.REGISTER_STYLE_ON_CHANGE, {}).map(s => {
   }
   return {
     enabled: s.enabled,
-    id: s.id,
-    md5Url: s.md5Url,
-    originalMd5: s.originalMd5,
-    name: s.name,
     updateUrl: s.updateUrl,
+    md5Url: s.md5Url,
     url: s.url,
+    originalMd5: s.originalMd5,
+    sections: [],
+    name: s.name,
+    id: s.id,
     code: s.code
   };
 });
@@ -49,13 +50,14 @@ function prepare (style) {
     const onError = () => {};
     const onDone = () => {
       delete style.code;
-      sections = sections.filter(s => s.code).map(s => {
+      sections = sections.filter(s => s.code.trim()).map(s => {
         delete s.start;
         s = Object.assign({
-          domains: [],
-          regexps: [],
+          code: '',
+          urls: [],
           urlPrefixes: [],
-          urls: []
+          domains: [],
+          regexps: []
         }, s);
         return s;
       });
@@ -74,6 +76,7 @@ function prepare (style) {
 Promise.all(styles.map(prepare)).then(styles => {
   styles = styles.filter(s => s);
   const path = OS.Path.join(OS.Constants.Path.desktopDir, 'stylish.json');
+  //styles.map(s => s.sections.map(s => console.error(s.code)));
   Downloads.fetch(
     URL.createObjectURL(new Blob([JSON.stringify(styles, null, '\t')], {
       type: 'text/plain;charset=utf-8;'

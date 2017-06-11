@@ -1,26 +1,3 @@
-/*!
-Parser-Lib
-Copyright (c) 2009-2016 Nicholas C. Zakas. All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-/* Version v1.1.0, Build time: 6-December-2016 10:31:29 */
 var parserlib = (function () {
 var require;
 require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
@@ -1085,6 +1062,7 @@ Parser.prototype = function() {
                     this._readWhitespace();
 
                     tokenStream.mustMatch(Tokens.LBRACE);
+                    this._readWhitespace();
 
                     if (emit !== false) {
                         this.fire({
@@ -1659,7 +1637,7 @@ Parser.prototype = function() {
                     col:       token.startCol
                 });
 
-                this._readWhitespace();
+                this._readWhitespace(); // Stylus hack
 
                 var ok = true;
                 while (ok) {
@@ -1681,6 +1659,9 @@ Parser.prototype = function() {
                             break;
                         case Tokens.DOCUMENT_SYM:
                             this._document();
+                            break;
+                        case Tokens.SUPPORTS_SYM:
+                            this._supports();
                             break;
                         default:
                             ok = Boolean(this._ruleset());
@@ -2008,8 +1989,8 @@ Parser.prototype = function() {
                 /*
                  * simple_selector_sequence
                  *   : [ type_selector | universal ]
-                 *     [ HASH | class | attrib | pseudo | negation ]*
-                 *   | [ HASH | class | attrib | pseudo | negation ]+
+                 *     [ HASH | class | attrib | pseudo | any | negation ]*
+                 *   | [ HASH | class | attrib | pseudo | any | negation ]+
                  *   ;
                  */
 
@@ -2033,6 +2014,7 @@ Parser.prototype = function() {
                         this._class,
                         this._attrib,
                         this._pseudo,
+                        this._any,
                         this._negation
                     ],
                     i           = 0,
@@ -2259,6 +2241,15 @@ Parser.prototype = function() {
                         tokenStream.mustMatch([Tokens.IDENT, Tokens.STRING]);
                         value += tokenStream.token().value;
                         value += this._readWhitespace();
+
+                        if (tokenStream.match([Tokens.IDENT])) {
+                            if (tokenStream.token().value.toLowerCase() == 'i') {
+                                value += tokenStream.token().value;
+                                value += this._readWhitespace();
+                            } else {
+                                tokenStream.unget();
+                            }
+                        }
                     }
 
                     tokenStream.mustMatch(Tokens.RBRACKET);
@@ -2356,6 +2347,39 @@ Parser.prototype = function() {
 
                 return value.length ? value : null;
 
+            },
+
+            //CSS3 Selectors
+            _any: function() {
+                /*
+                 * any
+                 *   : ANY S* any_arg S* ')'
+                 *   ;
+                 */
+
+                var tokenStream = this._tokenStream,
+                    line,
+                    col,
+                    value       = "",
+                    arg,
+                    subpart     = null;
+
+                if (tokenStream.match(Tokens.ANY)) {
+                    value = tokenStream.token().value;
+                    line = tokenStream.token().startLine;
+                    col = tokenStream.token().startCol;
+                    value += this._readWhitespace();
+                    arg = this._selectors_group();
+                    value += arg;
+                    value += this._readWhitespace();
+                    tokenStream.match(Tokens.RPAREN);
+                    value += tokenStream.token().value;
+
+                    subpart = new SelectorSubPart(value, "any", line, col);
+                    subpart.args.push(arg);
+                }
+
+                return subpart;
             },
 
             //CSS3 Selectors
@@ -2720,7 +2744,7 @@ Parser.prototype = function() {
 
                             //functionText += this._term();
                             lt = tokenStream.peek();
-                            while (lt !== Tokens.COMMA && lt !== Tokens.S && lt !== Tokens.RPAREN) {
+                            while (lt !== Tokens.COMMA && lt !== Tokens.S && lt !== Tokens.RPAREN && lt !== Tokens.EOF) {
                                 tokenStream.get();
                                 functionText += tokenStream.token().value;
                                 lt = tokenStream.peek();
@@ -3323,7 +3347,7 @@ var Properties = module.exports = {
     "appearance"                    : "none | auto",
     "-moz-appearance"               : "none | button | button-arrow-down | button-arrow-next | button-arrow-previous | button-arrow-up | button-bevel | button-focus | caret | checkbox | checkbox-container | checkbox-label | checkmenuitem | dualbutton | groupbox | listbox | listitem | menuarrow | menubar | menucheckbox | menuimage | menuitem | menuitemtext | menulist | menulist-button | menulist-text | menulist-textfield | menupopup | menuradio | menuseparator | meterbar | meterchunk | progressbar | progressbar-vertical | progresschunk | progresschunk-vertical | radio | radio-container | radio-label | radiomenuitem | range | range-thumb | resizer | resizerpanel | scale-horizontal | scalethumbend | scalethumb-horizontal | scalethumbstart | scalethumbtick | scalethumb-vertical | scale-vertical | scrollbarbutton-down | scrollbarbutton-left | scrollbarbutton-right | scrollbarbutton-up | scrollbarthumb-horizontal | scrollbarthumb-vertical | scrollbartrack-horizontal | scrollbartrack-vertical | searchfield | separator | sheet | spinner | spinner-downbutton | spinner-textfield | spinner-upbutton | splitter | statusbar | statusbarpanel | tab | tabpanel | tabpanels | tab-scroll-arrow-back | tab-scroll-arrow-forward | textfield | textfield-multiline | toolbar | toolbarbutton | toolbarbutton-dropdown | toolbargripper | toolbox | tooltip | treeheader | treeheadercell | treeheadersortarrow | treeitem | treeline | treetwisty | treetwistyopen | treeview | -moz-mac-unified-toolbar | -moz-win-borderless-glass | -moz-win-browsertabbar-toolbox | -moz-win-communicationstext | -moz-win-communications-toolbox | -moz-win-exclude-glass | -moz-win-glass | -moz-win-mediatext | -moz-win-media-toolbox | -moz-window-button-box | -moz-window-button-box-maximized | -moz-window-button-close | -moz-window-button-maximize | -moz-window-button-minimize | -moz-window-button-restore | -moz-window-frame-bottom | -moz-window-frame-left | -moz-window-frame-right | -moz-window-titlebar | -moz-window-titlebar-maximized",
     "-ms-appearance"                : "none | icon | window | desktop | workspace | document | tooltip | dialog | button | push-button | hyperlink | radio | radio-button | checkbox | menu-item | tab | menu | menubar | pull-down-menu | pop-up-menu | list-menu | radio-group | checkbox-group | outline-tree | range | field | combo-box | signature | password | normal",
-    "-webkit-appearance"            : "none | button | button-bevel | caps-lock-indicator | caret | checkbox | default-button | listbox	| listitem | media-fullscreen-button | media-mute-button | media-play-button | media-seek-back-button	| media-seek-forward-button	| media-slider | media-sliderthumb | menulist	| menulist-button	| menulist-text	| menulist-textfield | push-button	| radio	| searchfield	| searchfield-cancel-button	| searchfield-decoration | searchfield-results-button | searchfield-results-decoration | slider-horizontal | slider-vertical | sliderthumb-horizontal | sliderthumb-vertical	| square-button	| textarea	| textfield	| scrollbarbutton-down | scrollbarbutton-left | scrollbarbutton-right | scrollbarbutton-up | scrollbargripper-horizontal | scrollbargripper-vertical | scrollbarthumb-horizontal | scrollbarthumb-vertical | scrollbartrack-horizontal | scrollbartrack-vertical",
+    "-webkit-appearance"            : "none | button | button-bevel | caps-lock-indicator | caret | checkbox | default-button | listbox | listitem | media-fullscreen-button | media-mute-button | media-play-button | media-seek-back-button   | media-seek-forward-button | media-slider | media-sliderthumb | menulist   | menulist-button   | menulist-text | menulist-textfield | push-button  | radio | searchfield   | searchfield-cancel-button | searchfield-decoration | searchfield-results-button | searchfield-results-decoration | slider-horizontal | slider-vertical | sliderthumb-horizontal | sliderthumb-vertical    | square-button | textarea  | textfield | scrollbarbutton-down | scrollbarbutton-left | scrollbarbutton-right | scrollbarbutton-up | scrollbargripper-horizontal | scrollbargripper-vertical | scrollbarthumb-horizontal | scrollbarthumb-vertical | scrollbartrack-horizontal | scrollbartrack-vertical",
     "-o-appearance"                 : "none | window | desktop | workspace | document | tooltip | dialog | button | push-button | hyperlink | radio | radio-button | checkbox | menu-item | tab | menu | menubar | pull-down-menu | pop-up-menu | list-menu | radio-group | checkbox-group | outline-tree | range | field | combo-box | signature | password | normal",
 
     "azimuth"                       : "<azimuth>",
@@ -4716,11 +4740,12 @@ TokenStream.prototype = mix(new TokenStreamBase(), {
 
                 /*
                  * Potential tokens:
+                 * - ANY
                  * - NOT
                  * - CHAR
                  */
                 case ":":
-                    token = this.notToken(c, startLine, startCol);
+                    token = this.notOrAnyToken(c, startLine, startCol);
                     break;
 
                 /*
@@ -5126,7 +5151,7 @@ TokenStream.prototype = mix(new TokenStreamBase(), {
     },
 
     /**
-     * Produces a NOT or CHAR token based on the specified information. The
+     * Produces a NOT or ANY or CHAR token based on the specified information. The
      * first character is provided and the rest is read by the function to determine
      * the correct token to create.
      * @param {String} first The first character in the token.
@@ -5135,7 +5160,7 @@ TokenStream.prototype = mix(new TokenStreamBase(), {
      * @return {Object} A token object.
      * @method notToken
      */
-    notToken: function(first, startLine, startCol) {
+    notOrAnyToken: function(first, startLine, startCol) {
         var reader      = this._reader,
             text        = first;
 
@@ -5144,10 +5169,20 @@ TokenStream.prototype = mix(new TokenStreamBase(), {
 
         if (text.toLowerCase() === ":not(") {
             return this.createToken(Tokens.NOT, text, startLine, startCol);
-        } else {
-            reader.reset();
-            return this.charToken(first, startLine, startCol);
         }
+        if (text.toLowerCase() === ":any(") {
+            return this.createToken(Tokens.ANY, text, startLine, startCol);
+        }
+        text += reader.readCount(5);
+        if (text.toLowerCase() === ":-moz-any(") {
+            return this.createToken(Tokens.ANY, text, startLine, startCol);
+        }
+        text += reader.readCount(3);
+        if (text.toLowerCase() === ":-webkit-any(") {
+            return this.createToken(Tokens.ANY, text, startLine, startCol);
+        }
+        reader.reset();
+        return this.charToken(first, startLine, startCol);
     },
 
     /**
@@ -5638,6 +5673,7 @@ var Tokens = module.exports = [
 
     // modifier
     { name: "NOT" },
+    { name: "ANY", text: ["any", "-webkit-any", "-moz-any"] },
 
     /*
      * Defined in CSS3 Paged Media
@@ -7301,4 +7337,5 @@ module.exports = {
 
 return require('parserlib');
 })();
+
 exports.parserlib = parserlib;
